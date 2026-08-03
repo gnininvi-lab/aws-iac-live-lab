@@ -17,5 +17,5 @@ provider "aws" {
 module "analytics_storage" {
   source      = "./modules/secure_bucket"
   bucket_name = "corp-analytics-data"
-  environment = "prod" # ❌ This breaks the "Dev/Stage/Prod" capitalization rule
+  environment = "Prod"
 }
