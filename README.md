@@ -52,8 +52,11 @@ When Checkov analyzes a base AWS S3 bucket declaration, it explicitly scans for 
 *   **CKV_AWS_144 (MFA Delete): Multi-factor authentication delete configurations are omitted.
 
 ![S3 Versioning & MFA](.doc/assets/s3-bucket versioning-MFA)
+
 ![S3 Encryption](.doc/assets/s3-bucket-encryption)
+
 ![CI/CD Pipeline flagged events](.doc/assets/repository-flags)
+
 ![SAST Scan](.doc/assets/checkov-SAST-scan)
 
 ---
