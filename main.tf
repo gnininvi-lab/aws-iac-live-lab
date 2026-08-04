@@ -5,17 +5,21 @@ terraform {
       version = "~> 5.0"
     }
   }
+
+  backend "s3" {
+    bucket = "folly-tfstate-bucket" 
+    key    = "self-service-lab/terraform.tfstate"
+    region = "us-east-1"
+  }
 }
 
 provider "aws" {
   region = "us-east-1"
-  # No real AWS credentials are needed yet because our CI pipeline only runs "plan"
-  skip_credentials_validation = true
-  skip_requesting_account_id  = true
 }
 
 module "analytics_storage" {
   source      = "./modules/secure_bucket"
-  bucket_name = "corp-analytics-data"
+  bucket_name = "corp-analytics-data-unique-suffix" # S3 names must be globally unique
   environment = "Prod"
 }
+

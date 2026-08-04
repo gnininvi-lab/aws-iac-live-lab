@@ -3,35 +3,52 @@ name: AWS IaC Compliance Pipeline
 on:
   pull_request:
     branches: [ main ]
+  push:
+    branches: [ main ]
+
+permissions:
+  id-token: write
+  contents: read
 
 jobs:
-  iac-security-check:
+  iac-pipeline:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
 
-      # 1. SAST Verification (AWS Security Best Practices)
       - name: Run Checkov SAST Scanner
         uses: bridgecrewio/checkov-action@master
         with:
           framework: terraform
-          output_format: cli
-          soft_fail: false # Hard fail if AWS security baseline defaults are stripped out
+          soft_fail: false
 
-      # 2. Plan Generation 
+      - name: Configure AWS Credentials via OIDC
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::YOUR_AWS_ACCOUNT_ID:role/github-actions-iac-deployer # Replace with your Role ARN
+          aws-region: us-east-1
+
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
 
-      - name: Terraform Init & Plan
+      # Note: We must configure credentials before Init because state is stored in AWS S3
+      - name: Terraform Init
+        run: terraform init
+
+      - name: Terraform Plan
         run: |
-          terraform init
           terraform plan -out=tfplan
           terraform show -json tfplan > tfplan.json
 
-      # 3. OPA/Rego Custom Compliance Policy Verification
       - name: Run OPA Compliance Checks
         uses: open-policy-agent/conftest-action@master
         with:
           files: tfplan.json
           policy: policy
+
+      # Automatically deploy infrastructure ONLY when code merges to main
+      - name: Terraform Apply
+        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+        run: terraform apply -auto-approve tfplan
+
