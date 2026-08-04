@@ -42,7 +42,7 @@ jobs:
           terraform show -json tfplan > tfplan.json
 
       - name: Run OPA Compliance Checks
-        uses: open-policy-agent/conftest-action@master
+        uses: instrumenta/conftest-action@master
         with:
           files: tfplan.json
           policy: policy
