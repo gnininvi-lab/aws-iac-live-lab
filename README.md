@@ -51,7 +51,7 @@ When Checkov analyzes a base AWS S3 bucket declaration, it explicitly scans for 
 *   **CKV_AWS_18 (Server Access Logging): Missing aws_s3_bucket_logging to trace incoming API requests.
 *   **CKV_AWS_144 (MFA Delete): Multi-factor authentication delete configurations are omitted.
 
-![S3 Versioning & MFA](.doc/assets/s3-bucket versioning-MFA)
+![S3 Versioning & MFA](.doc/assets/s3-bucketversioning-MFA)
 
 ![S3 Encryption](.doc/assets/s3-bucket-encryption)
 
