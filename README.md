@@ -1,44 +1,89 @@
-# Automated IaC Self-Service & Compliance Pipeline Lab
+# Enterprise Self-Service IaC Pipeline with AWS, SAST & OPA
 
-A hands-on engineering lab simulating a secure, self-service Infrastructure as Code (IaC) pipeline. This setup empowers product teams to provision cloud infrastructure using pre-approved templates while automatically enforcing security benchmarks and enterprise compliance rules at the pull-request phase.
+A comprehensive, production-ready Infrastructure as Code (IaC) CI/CD pipeline lab. This architecture empowers product engineering teams to provision cloud infrastructure via self-service templates while enforcing automated security guardrails and corporate compliance policies directly within the version control lifecycle.
 
-## Architecture & Guardrails
-*   **Infrastructure as Code**: HashiCorp Terraform / OpenTofu templates for AWS.
-*   **SAST Security Scanning**: Checkov scanning engine validating AWS resource security defaults.
-*   **Policy Enforcement**: Open Policy Agent (OPA) via Conftest enforcing custom corporate standards.
-*   **Pipeline Automation**: GitHub Actions processing validations on every branch iteration.
+## Architecture & Component Overview
+
+[Developer Workspace] -> Uses Compliant Modules -> Commits Code -> Pull Request
+│
+(GitHub Actions CI/CD)
+│
+┌────────────────┴────────────────┐
+▼ ▼[1. Checkov SAST] [2. OPA Policy Scan]
+Validates AWS Defaults Enforces Tagging/Naming
+││
+└────────────────┬────────────────┘
+│
+▼
+[3. OIDC Trust Handshake]
+Exchanges Short-Lived JWT
+│
+▼[4. Automated AWS Deploy]
+Saves State to Remote S3
+
+
+*   **Infrastructure Engine**: HashiCorp Terraform / OpenTofu utilizing the AWS provider.
+*   **Self-Service Modules**: Pre-hardened templates (e.g., S3 Buckets) with embedded encryption and public access blocks.
+*   **Static Application Security Testing (SAST)**: Checkov scanning engine verifying AWS infrastructure security posture before plan execution.
+*   **Policy-as-Code Engine**: Open Policy Agent (OPA) via Conftest parsing execution plans (`tfplan.json`) to enforce corporate tag uniformity and naming constraints.
+*   **Passwordless Authentication**: AWS IAM OpenID Connect (OIDC) federation, eliminating the need to store long-lived, high-risk AWS Access Keys inside GitHub Secrets.
+*   **State Optimization**: Persistent, remote AWS S3 state backend.
 
 ---
 
-## Compliance Test Execution Lab
+## Pipeline Validation & Testing Lifecycle
 
-To validate our enterprise policy governance, we simulated a deployment using a lowercase value (`prod`) for the environment tag, violating our strict corporate naming conventions (`Dev`, `Stage`, or `Prod`).
+The architecture splits deployment safety boundaries into a dual-phase pipeline.
 
-### 1. Intercepting Non-Compliant Code (OPA Catch)
-The pipeline successfully intercepted the violation during the pull request phase, failing the workflow build and blocking the unapproved infrastructure plan.
+### Phase 1: Compliance Interception & Guardrails (Pull Requests)
+If an engineer attempts to deploy non-compliant configurations (e.g., lowercasing an environment identifier like `environment = "prod"` instead of using mandatory casing like `Prod`), the OPA engine instantly halts the workflow:
 
-![OPA Error Failure Screenshot](doc/assets/error-screenshot.png)
+```text
+❌ COMPLIANCE REJECTED: Bucket 'analytics_storage' must have an 'Environment' tag set exactly to 'Dev', 'Stage', or 'Prod'. Found: 'prod'
+```
 
-> **Pipeline Output Log:**
-> `❌ COMPLIANCE REJECTED: Bucket 'analytics_storage' must have an 'Environment' tag set exactly to 'Dev', 'Stage', or 'Prod'. Found: 'prod'`
+### Phase 2: Live Automated Provisioning (Merge to Main)
+Once architectural corrections are submitted and verified, the pipeline turns green. When merged into the `main` branch, the OIDC provider assumes the secure AWS role and deploys the infrastructure live.
 
-### 2. Remediating and Passing Validation
-Once the configuration bug was corrected to the compliant `Prod` capitalization, the pipeline automatically re-evaluated the execution plan, cleared all policy blocks, and marked the build status as successful.
+### Phase 3: Typical S3 Failures Triggers
+When Checkov analyzes a base AWS S3 bucket declaration, it explicitly scans for three major omissions among others. They are:
+*   **CKV_AWS_21 (Versioning): Missing aws_s3_bucket_versioning attachment.
+*   **CKV_AWS_18 (Server Access Logging): Missing aws_s3_bucket_logging to trace incoming API requests.
+*   **CKV_AWS_144 (MFA Delete): Multi-factor authentication delete configurations are omitted.
 
-![Pipeline Success Green Screenshot](doc/assets/fixed-screenshot.png)
+![S3 Versioning & MFA](.doc/assets/s3-bucket versioning-MFA)
+![S3 Encryption](.doc/assets/s3-bucket-encryption)
+![CI/CD Pipeline flagged events](.doc/assets/repository-flags)
+![SAST Scan](.doc/assets/checkov-SAST-scan)
 
 ---
 
-## Local Validation Reference
+## Step-by-Step Lab Setup Reference
 
-Run these validation hooks inside your VS Code terminal to evaluate your policy conditions locally before pushing changes to GitHub:
+### 1. File Structure Checklist
+```text
+aws-iac-live-lab/
+├── .github/workflows/
+│   └── pipeline.yml       # GitHub Actions OIDC workflow matrix
+├── modules/secure_bucket/
+│   └── main.tf            # Standard hardened S3 template 
+├── policy/
+│   └── tags.rego          # Enterprise Rego evaluation rules
+├── main.tf                # Engineer's configuration consumer
+└── README.md              # Project documentation
+```
+
+### 2. AWS Pre-Requisites Runlist
+Before running the workflow, execute these environment configurations inside your AWS Management Console:
+*   **IAM Identity Provider**: Configure an OIDC connector pointing to `https://githubusercontent.com` with an audience of `://amazonaws.com`.
+*   **IAM Deployment Role**: Generate a role named `github-actions-iac-deployer` with a trust policy bound strictly to your GitHub repository context (`repo:YOUR_GITHUB_USERNAME/aws-iac-live-lab:*`). Attach `AmazonS3FullAccess`.
+*   **S3 State Storage**: Provision a private, encrypted S3 bucket to serve as the remote centralized repository for the state tracking files.
+
+### 3. Local Workspace Sync Commands
+To save this comprehensive documentation and push it live to your workspace repository, run the following commands in your VS Code terminal:
 
 ```bash
-# Generate the automated Terraform plan execution document
-terraform init
-terraform plan -out=tfplan
-terraform show -json tfplan > tfplan.json
-
-# Evaluate the localized compliance policies against your plan artifact
-conftest test tfplan.json --policy policy/
+git add README.md
+git commit -m "docs: compile comprehensive pipeline and architecture overview"
+git push origin main
 ```
