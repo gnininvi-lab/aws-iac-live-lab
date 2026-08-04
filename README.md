@@ -4,22 +4,29 @@ A comprehensive, production-ready Infrastructure as Code (IaC) CI/CD pipeline la
 
 ## Architecture & Component Overview
 
-[Developer Workspace] -> Uses Compliant Modules -> Commits Code -> Pull Request
-│
-(GitHub Actions CI/CD)
-│
-┌────────────────┴────────────────┐
-▼ ▼[1. Checkov SAST] [2. OPA Policy Scan]
-Validates AWS Defaults Enforces Tagging/Naming
-││
-└────────────────┬────────────────┘
-│
-▼
-[3. OIDC Trust Handshake]
-Exchanges Short-Lived JWT
-│
-▼[4. Automated AWS Deploy]
-Saves State to Remote S3
+```text
+ [Developer Workspace] -> Uses Compliant Modules -> Commits Code -> Pull Request
+                                                                       │
+                                                            (GitHub Actions CI/CD)
+                                                                       │
+                                                      ┌────────────────┴────────────────┐
+                                                      ▼                                 ▼
+                                              [1. Checkov SAST]                [2. OPA Policy Scan]
+                                            Validates AWS Defaults           Enforces Tagging/Naming
+                                                      │                                 │
+                                                      └────────────────┬────────────────┘
+                                                                       │
+                                                                       ▼
+                                                       [3. OIDC Trust Handshake]
+                                                       Exchanges Short-Lived JWT
+                                                                       │
+                                                                       ▼
+                                                       [4. Automated AWS Deploy]
+                                                       Saves State to Remote S3
+```
+
+
+
 
 
 *   **Infrastructure Engine**: HashiCorp Terraform / OpenTofu utilizing the AWS provider.
